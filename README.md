@@ -77,6 +77,16 @@ If you signed up to Plaud with **Continue with Google** or **Continue with Apple
 
 ## Documentation
 
+### VoiceInk on macOS
+
+Self-hosted Riffado can use the installed VoiceInk Mac app for local transcription
+through an optional [VoiceInk bridge](tools/voiceink-bridge/README.md). Select
+**VoiceInk** in Settings → Providers after starting the bridge on your Mac.
+This requires an unlocked desktop session and macOS automation permissions;
+VoiceInk's exported text is saved as a normal Riffado transcript.
+
+### Guides
+
 Everything lives at **[riffado.com/docs](https://riffado.com/docs)**. Direct links:
 
 - [Install & first run](https://riffado.com/docs/self-hosting/install)

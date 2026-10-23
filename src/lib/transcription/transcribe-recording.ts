@@ -520,6 +520,8 @@ async function transcribeRecordingInner(
                         apiKey,
                         baseURL: credentials.baseUrl || undefined,
                         timeout: env.WHISPER_REQUEST_TIMEOUT_MS,
+                        maxRetries: findPreset(credentials.provider)
+                            ?.transcriptionMaxRetries,
                     });
 
                     if (transcriptionStyle === "chat") {
