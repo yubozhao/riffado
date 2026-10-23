@@ -31,10 +31,10 @@ import {
 import { createUserStorageProvider } from "@/lib/storage/factory";
 import {
     claimAutoTranscribeIds,
-    listAutoTranscribeRetryIds,
     noteAutoTranscribeOutcome,
     releaseAutoTranscribeIds,
 } from "@/lib/sync/auto-transcribe-state";
+import { selectAutoTranscriptionIds } from "@/lib/sync/select-auto-transcriptions";
 import {
     upsertEnhancement,
     upsertTranscription,
@@ -866,17 +866,14 @@ async function runSyncRecordingsForUser(userId: string): Promise<SyncResult> {
         // 'keep_both' runs anyway so both coexist. Recordings whose Plaud
         // transcript wasn't ready/failed fall back here naturally.
         if (context.autoTranscribe) {
-            let retryIds: string[] = [];
-            try {
-                retryIds = await listAutoTranscribeRetryIds(userId, {
+            const mergedIds = await selectAutoTranscriptionIds(
+                userId,
+                result.pendingTranscriptionIds,
+                {
+                    providerId: settings?.defaultTranscriptionProviderId,
                     transcriptMode: context.transcriptMode,
-                });
-            } catch (error) {
-                console.error("Auto-transcribe retry lookup failed:", error);
-            }
-            const mergedIds = [
-                ...new Set([...result.pendingTranscriptionIds, ...retryIds]),
-            ];
+                },
+            );
             const eligibleIds =
                 context.transcriptMode === "keep_both"
                     ? mergedIds

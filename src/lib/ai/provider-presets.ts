@@ -8,6 +8,8 @@ export interface ProviderPreset {
     transcriptionStyle: TranscriptionStyle;
     fetchAudioModels?: boolean;
     transcriptionMaxRetries?: number;
+    preserveTranscriptionAudio?: boolean;
+    retryTranscriptionBacklog?: boolean;
     knownTranscriptionModels?: readonly string[];
     /**
      * Whether this provider can be used for AI enhancements (summaries,
@@ -82,6 +84,8 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
         placeholder: "Local VoiceInk bridge key",
         defaultModel: "voiceink-app",
         transcriptionMaxRetries: 0,
+        preserveTranscriptionAudio: true,
+        retryTranscriptionBacklog: false,
         transcriptionStyle: "whisper",
         knownTranscriptionModels: ["voiceink-app"],
         supportsEnhancement: false,

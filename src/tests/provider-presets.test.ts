@@ -108,6 +108,9 @@ describe("provider-presets", () => {
             expect(isLocalPreset("VoiceInk")).toBe(true);
             expect(findPreset("VoiceInk")?.defaultModel).toBe("voiceink-app");
             expect(findPreset("VoiceInk")?.transcriptionMaxRetries).toBe(0);
+            expect(findPreset("VoiceInk")?.preserveTranscriptionAudio).toBe(
+                true,
+            );
             expect(
                 getVisiblePresets({ isHosted: true }).some(
                     (preset) => preset.name === "VoiceInk",
