@@ -17,11 +17,16 @@ on itemWithId(windowName, identifier)
 end itemWithId
 
 on jobGroup(filename)
-    set uiNodes to my nodesFor("VoiceInk")
-    tell application "System Events"
-        repeat with elem in uiNodes
-            if role of elem is "AXStaticText" then
-                if value of elem is filename then return value of attribute "AXParent" of elem
+    tell application "System Events" to tell process "VoiceInk"
+        set queueRows to UI elements of scroll area 1 of group 1 of window "VoiceInk"
+        repeat with queueRow in queueRows
+            if role of queueRow is "AXGroup" then
+                set rowNodes to UI elements of queueRow
+                repeat with elem in rowNodes
+                    if role of elem is "AXStaticText" then
+                        if value of elem is filename then return contents of queueRow
+                    end if
+                end repeat
             end if
         end repeat
     end tell
@@ -29,26 +34,47 @@ on jobGroup(filename)
 end jobGroup
 
 on queueState()
-    set uiNodes to my nodesFor("VoiceInk")
-    set waitingCount to 0
+    tell application "System Events" to tell process "VoiceInk"
+        set uiNodes to UI elements of group 1 of window "VoiceInk"
+    end tell
     tell application "System Events"
         repeat with elem in uiNodes
             if role of elem is "AXButton" then
                 if help of elem is "Cancel transcription" then return "busy"
-            else if role of elem is "AXStaticText" then
-                if value of elem is "Waiting" then set waitingCount to waitingCount + 1
+                if help of elem is "Start transcription" then return "pending"
+                if help of elem is "Select an enabled mode to start" then return "pending"
+                if help of elem is "Clear all items" then return "ready"
             end if
         end repeat
     end tell
-    if waitingCount > 0 then return "pending"
     return "ready"
 end queueState
+
+on pendingCount(filename)
+    set rowGroup to my jobGroup(filename)
+    set waitingCount to 0
+    tell application "System Events"
+        set queueParent to value of attribute "AXParent" of rowGroup
+        set queueRows to UI elements of queueParent
+        repeat with queueRow in queueRows
+            if role of queueRow is "AXGroup" then
+                set rowNodes to UI elements of queueRow
+                repeat with elem in rowNodes
+                    if role of elem is "AXStaticText" then
+                        if value of elem is "Waiting" then set waitingCount to waitingCount + 1
+                    end if
+                end repeat
+            end if
+        end repeat
+    end tell
+    return waitingCount
+end pendingCount
 
 on jobState(filename)
     set rowGroup to my jobGroup(filename)
     if rowGroup is missing value then return "missing"
     tell application "System Events"
-        set rowNodes to entire contents of rowGroup
+        set rowNodes to UI elements of rowGroup
         repeat with elem in rowNodes
             if role of elem is "AXMenuButton" and help of elem is "Save to file" then return "completed"
             if role of elem is "AXStaticText" then
@@ -61,7 +87,9 @@ on jobState(filename)
 end jobState
 
 on pressHelp(labelText)
-    set uiNodes to my nodesFor("VoiceInk")
+    tell application "System Events" to tell process "VoiceInk"
+        set uiNodes to UI elements of group 1 of window "VoiceInk"
+    end tell
     tell application "System Events"
         repeat with elem in uiNodes
             if role of elem is "AXButton" and help of elem is labelText then
@@ -95,17 +123,8 @@ on run argv
         else if taskAction is "start" then
             set filename to item 2 of argv
             if my jobState(filename) is not "pending" then error "Expected exactly one pending bridge recording"
-            set uiNodes to my nodesFor("VoiceInk")
-            set waitingCount to 0
-            tell application "System Events"
-                repeat with elem in uiNodes
-                    if role of elem is "AXStaticText" then
-                        if value of elem is "Waiting" then set waitingCount to waitingCount + 1
-                    end if
-                    if role of elem is "AXButton" and help of elem is "Cancel transcription" then error "VoiceInk is already processing"
-                end repeat
-            end tell
-            if waitingCount is not 1 then error "Other recordings are waiting in VoiceInk"
+            if my queueState() is "busy" then error "VoiceInk is already processing"
+            if my pendingCount(filename) is not 1 then error "Other recordings are waiting in VoiceInk"
             my pressHelp("Start transcription")
             return "started"
         else if taskAction is "export" then
@@ -115,10 +134,13 @@ on run argv
             if my jobState(filename) is not "completed" then error "Recording is not completed"
             set rowGroup to my jobGroup(filename)
             tell application "System Events"
-                set rowNodes to entire contents of rowGroup
+                set rowNodes to UI elements of rowGroup
                 set saveControl to missing value
                 repeat with elem in rowNodes
-                    if role of elem is "AXMenuButton" and help of elem is "Save to file" then set saveControl to contents of elem
+                    if role of elem is "AXMenuButton" and help of elem is "Save to file" then
+                        set saveControl to contents of elem
+                        exit repeat
+                    end if
                 end repeat
                 if saveControl is missing value then error "Transcript export control is missing"
                 perform action "AXPress" of saveControl
