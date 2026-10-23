@@ -7,6 +7,9 @@ export interface ProviderPreset {
     defaultModel: string;
     transcriptionStyle: TranscriptionStyle;
     fetchAudioModels?: boolean;
+    transcriptionMaxRetries?: number;
+    preserveTranscriptionAudio?: boolean;
+    retryTranscriptionBacklog?: boolean;
     knownTranscriptionModels?: readonly string[];
     /**
      * Whether this provider can be used for AI enhancements (summaries,
@@ -76,6 +79,18 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
         transcriptionStyle: "whisper",
     },
     {
+        name: "VoiceInk",
+        baseUrl: "http://host.docker.internal:8084/v1",
+        placeholder: "Local VoiceInk bridge key",
+        defaultModel: "voiceink-app",
+        transcriptionMaxRetries: 0,
+        preserveTranscriptionAudio: true,
+        retryTranscriptionBacklog: false,
+        transcriptionStyle: "whisper",
+        knownTranscriptionModels: ["voiceink-app"],
+        supportsEnhancement: false,
+    },
+    {
         name: "Google Gemini",
         baseUrl: "",
         placeholder: "AIza...",
@@ -110,6 +125,7 @@ export const PROVIDER_PRESETS: readonly ProviderPreset[] = [
 export const LOCAL_PRESET_NAMES: ReadonlySet<string> = new Set([
     "LM Studio",
     "Ollama",
+    "VoiceInk",
 ]);
 
 export function getVisiblePresets({

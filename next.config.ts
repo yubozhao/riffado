@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     output: "standalone",
+    experimental: {
+        proxyClientMaxBodySize: "512mb",
+    },
     // Client source maps are only ever generated when the build is going
     // to inject+upload+delete them (see the guarded `posthog-cli` step in
     // the Dockerfile builder stage). Without `POSTHOG_CLI_API_KEY`, Next

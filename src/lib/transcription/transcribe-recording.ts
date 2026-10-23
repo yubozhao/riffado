@@ -230,7 +230,7 @@ export interface TranscribeOptions {
      */
     force?: boolean;
     /** What triggered this call. Drives the `recording_transcribed` event's `trigger` property. */
-    trigger?: "manual" | "sync";
+    trigger?: "manual" | "sync" | "upload";
 }
 
 export interface TranscribeResult {
@@ -520,6 +520,8 @@ async function transcribeRecordingInner(
                         apiKey,
                         baseURL: credentials.baseUrl || undefined,
                         timeout: env.WHISPER_REQUEST_TIMEOUT_MS,
+                        maxRetries: findPreset(credentials.provider)
+                            ?.transcriptionMaxRetries,
                     });
 
                     if (transcriptionStyle === "chat") {
@@ -548,10 +550,17 @@ async function transcribeRecordingInner(
                             transcriptionText = parsed.text;
                             detectedLanguage = parsed.detectedLanguage;
                         } else {
-                            const compressed = await maybeCompressForWhisper(
-                                audioBuffer,
-                                contentType,
-                            );
+                            const compressed = findPreset(credentials.provider)
+                                ?.preserveTranscriptionAudio
+                                ? {
+                                      buffer: audioBuffer,
+                                      contentType,
+                                      compressed: false,
+                                  }
+                                : await maybeCompressForWhisper(
+                                      audioBuffer,
+                                      contentType,
+                                  );
                             const fileToSend = compressed.compressed
                                 ? buildAudioFile(
                                       compressed.buffer,

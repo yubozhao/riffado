@@ -103,9 +103,24 @@ describe("provider-presets", () => {
             expect(supportsEnhancement("ElevenLabs")).toBe(false);
         });
 
-        it("is true for every other preset", () => {
+        it("keeps VoiceInk local and transcription-only", () => {
+            expect(supportsEnhancement("VoiceInk")).toBe(false);
+            expect(isLocalPreset("VoiceInk")).toBe(true);
+            expect(findPreset("VoiceInk")?.defaultModel).toBe("voiceink-app");
+            expect(findPreset("VoiceInk")?.transcriptionMaxRetries).toBe(0);
+            expect(findPreset("VoiceInk")?.preserveTranscriptionAudio).toBe(
+                true,
+            );
+            expect(
+                getVisiblePresets({ isHosted: true }).some(
+                    (preset) => preset.name === "VoiceInk",
+                ),
+            ).toBe(false);
+        });
+
+        it("is true for presets that support enhancements", () => {
             for (const preset of PROVIDER_PRESETS) {
-                if (preset.name === "ElevenLabs") continue;
+                if (preset.supportsEnhancement === false) continue;
                 expect(supportsEnhancement(preset.name)).toBe(true);
             }
         });

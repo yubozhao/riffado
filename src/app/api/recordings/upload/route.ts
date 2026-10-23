@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import * as path from "node:path";
 import { parseBuffer } from "music-metadata";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { db } from "@/db";
 import { recordings } from "@/db/schema";
 import { requireApiSession } from "@/lib/auth-server";
@@ -13,6 +13,7 @@ import { AppError, apiHandler, ErrorCode } from "@/lib/errors";
 import { enforceStorageCap } from "@/lib/hosted/billing/storage-cap";
 import { captureServerEvent } from "@/lib/posthog-server";
 import { createUserStorageProvider } from "@/lib/storage/factory";
+import { transcribeNewUpload } from "@/lib/transcription/auto-transcribe-upload";
 import { getAudioMimeType } from "@/lib/utils";
 
 const ACCEPTED_EXTENSIONS = new Set([
@@ -148,25 +149,30 @@ export const POST = apiHandler(async (request: Request) => {
     const now = new Date();
     const endTime = new Date(now.getTime() + durationMs);
 
+    let recordingId: string;
     try {
-        await db.insert(recordings).values({
-            userId: session.user.id,
-            deviceSn: "local",
-            plaudFileId: fileId,
-            // Filename can carry topic info ("Call w/ Acme legal");
-            // encrypt at rest. The response below returns plaintext.
-            filename: encryptText(basename),
-            duration: durationMs,
-            startTime: now,
-            endTime,
-            filesize: buffer.length,
-            fileMd5: md5,
-            storageType: env.DEFAULT_STORAGE_TYPE,
-            storagePath: storageKey,
-            downloadedAt: now,
-            plaudVersion: "1",
-            isTrash: false,
-        });
+        const [recording] = await db
+            .insert(recordings)
+            .values({
+                userId: session.user.id,
+                deviceSn: "local",
+                plaudFileId: fileId,
+                // Filename can carry topic info ("Call w/ Acme legal");
+                // encrypt at rest. The response below returns plaintext.
+                filename: encryptText(basename),
+                duration: durationMs,
+                startTime: now,
+                endTime,
+                filesize: buffer.length,
+                fileMd5: md5,
+                storageType: env.DEFAULT_STORAGE_TYPE,
+                storagePath: storageKey,
+                downloadedAt: now,
+                plaudVersion: "1",
+                isTrash: false,
+            })
+            .returning({ id: recordings.id });
+        recordingId = recording.id;
     } catch (dbError) {
         // DB insert failed — clean up the already-uploaded storage file
         // to avoid orphaned objects with no corresponding DB record.
@@ -180,6 +186,14 @@ export const POST = apiHandler(async (request: Request) => {
         }
         throw dbError;
     }
+
+    after(async () => {
+        try {
+            await transcribeNewUpload(session.user.id, recordingId);
+        } catch (error) {
+            console.error("Automatic upload transcription failed:", error);
+        }
+    });
 
     await captureServerEvent({
         distinctId: session.user.id,
