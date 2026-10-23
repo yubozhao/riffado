@@ -1,7 +1,7 @@
 "use client";
 
 import { Bot, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useConfirm } from "@/components/confirm-dialog";
 import { AddProviderDialog } from "@/components/settings/add-provider-dialog";
@@ -60,17 +60,30 @@ export function ProvidersSection({
     );
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [aiSubSection, setAiSubSection] = useState<AISubSection>("providers");
+    const refreshVersion = useRef(0);
 
-    const refreshProviders = async () => {
+    const refreshProviders = useCallback(async () => {
+        const version = ++refreshVersion.current;
         try {
             const response = await fetch("/api/settings/ai/providers");
             if (!response.ok) throw new Error("Failed to fetch");
             const data = (await response.json()) as { providers: Provider[] };
-            setProviders(data.providers);
+            if (version === refreshVersion.current) {
+                setProviders(data.providers);
+            }
         } catch {
-            toast.error("Failed to refresh providers");
+            if (version === refreshVersion.current) {
+                toast.error("Failed to refresh providers");
+            }
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        void refreshProviders();
+        return () => {
+            refreshVersion.current++;
+        };
+    }, [refreshProviders]);
 
     const handleEdit = (provider: Provider) => {
         setEditingProvider(provider);
